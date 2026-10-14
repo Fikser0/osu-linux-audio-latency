@@ -124,9 +124,9 @@ WirePlumber's "Pro Audio" profile defaults to `api.alsa.disable-tsched = true` (
 
 ### 3. Realtime Scheduling: The .NET GC Deadlock Trap
 > [!CAUTION]
-> **NEVER boost managed .NET CLR threads (`Update`, `Draw`) to `SCHED_FIFO`!**  
-> In .NET 10 (used by osu!lazer), Garbage Collection uses Stop-The-World safepoints. An `Update` thread running in `SCHED_FIFO 70` starves background GC worker threads (`SCHED_OTHER 0`), causing an unrecoverable priority-inversion deadlock and silent crash during song select.  
-> **Only boost native C/BASS audio threads (`Audio*`, `alsa-pipewire`).**
+> **NEVER boost managed .NET CLR threads (`Update`, `Draw`, or managed `Audio (GameThread)`) to `SCHED_FIFO`!**  
+> In .NET 10 (used by osu!lazer), Garbage Collection uses Stop-The-World safepoints. A managed thread running in `SCHED_FIFO 75` starves background GC worker threads (`SCHED_OTHER 0`), causing an unrecoverable priority-inversion deadlock and silent crash.  
+> **Only boost native C/BASS audio threads:** Match `Audio*:RR|alsa-pipewire:*` (BASS spawns its native thread with `RR`, while managed threads start with `TS`).
 
 ### 4. Recalibrating In-Game Offset
 After eliminating ~16ms of physical hardware delay, any previous large negative offset in `~/.local/share/osu/game.ini` (e.g. `AudioOffset = -30.0`) will cause your hits to register ~16ms early. Run the in-game Offset Wizard to set a clean baseline.

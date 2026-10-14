@@ -58,8 +58,12 @@ When you click a circle and expect to hear a hitsound, the sound must traverse m
 ---
 
 ### Trap 4: The .NET Garbage Collection Priority Inversion Deadlock
-- **The Symptom:** osu! runs smoothly for a few songs, then completely freezes or silently terminates when returning to the Song Select carousel.
-- **The Cause:** osu!lazer is built on .NET 10 CLR. Managed garbage collection performs Stop-The-World pauses where background GC threads signal all managed threads to suspend. If you boost osu!'s `Update (GameThread)` to Realtime (`SCHED_FIFO 70`), it starves the background GC threads (which run in `SCHED_OTHER 0`). The GC cannot finish the safepoint, creating an unrecoverable priority-inversion deadlock.
+- **The Symptom:** osu! runs smoothly for a while (or several songs), then completely freezes or silently terminates when returning to Song Select or after 30-45 minutes of play.
+- **The Cause:** osu!lazer is built on .NET 10 CLR. Managed garbage collection performs Stop-The-World pauses where background GC threads signal all managed threads to suspend. If you boost ANY managed C# thread (like `Update (GameThread)` or the managed C# `Audio (GameThread)`) to Realtime (`SCHED_FIFO`), it starves background GC worker threads (`SCHED_OTHER 0`). The GC cannot finish the safepoint, creating an unrecoverable priority-inversion deadlock that causes the .NET runtime to abort the process.
+- **The Crucial Thread Distinction:**
+  - BASS spawns its own native C output thread, which defaults to `RR` (SCHED_RR).
+  - osu!framework spawns its managed C# audio component thread (`Audio (GameThread)`), which defaults to `TS` (SCHED_OTHER).
+  - **The Safe Pattern:** Match `Audio*:RR|alsa-pipewire:*`. This boosts BASS's native streaming thread and PipeWire's ALSA client, while leaving the managed C# `Audio (GameThread)` safely in `TS`.
 - **The Rule:**
-  - **SAFE to boost to `SCHED_FIFO`:** Pure native C audio threads (`Audio*`, `alsa-pipewire`).
-  - **NEVER boost to `SCHED_FIFO`:** Managed game logic threads (`Update`, `Draw`).
+  - **SAFE to boost to `SCHED_FIFO`:** Pure native threads (`Audio*:RR`, `alsa-pipewire:*`).
+  - **NEVER boost to `SCHED_FIFO`:** Any thread in `TS` (`Update`, `Draw`, or managed `Audio (GameThread)`).

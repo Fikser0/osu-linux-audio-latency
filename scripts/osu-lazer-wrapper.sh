@@ -46,8 +46,8 @@ rt_boost() {
 
     while kill -0 "$pid" 2>/dev/null; do
         ps -L -o tid=,cls=,comm= -p "$pid" | while read -r tid cls comm; do
-            case "$comm" in
-                Audio*|alsa-pipewire)
+            case "$comm:$cls" in
+                Audio*:RR|alsa-pipewire:*)
                     chrt -f -R -p "$OSU_RT_PRIO" "$tid" 2>/dev/null
                     ;;
             esac
