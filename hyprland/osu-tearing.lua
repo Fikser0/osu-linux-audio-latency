@@ -9,8 +9,7 @@ hl.config({
     vrr = 0, -- Disable VRR to prevent frame pacing stutter during tearing
   },
   input = {
-    accel_profile = "flat",
-    force_no_accel = true,
+    accel_profile = "flat", -- 1:1 raw input (avoid force_no_accel = true to prevent XWayland cursor desync)
     sensitivity = 0.0,
     follow_mouse = 1,
   },
