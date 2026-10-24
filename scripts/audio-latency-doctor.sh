@@ -68,7 +68,7 @@ for status_file in /proc/asound/card*/pcm*p/sub*/status; do
         state=$(grep '^state:' "$status_file" | awk '{print $2}')
         if [ "$state" = "RUNNING" ]; then
             card_dir=$(dirname "$status_file")
-            delay=$(grep '^delay:' "$status_file" | awk '{print $2}')
+            delay=$(grep '^delay' "$status_file" | awk '{print $3}')
             appl_ptr=$(grep '^appl_ptr' "$status_file" | awk '{print $3}')
             hw_ptr=$(grep '^hw_ptr' "$status_file" | awk '{print $3}')
             rate=$(grep '^rate:' "$card_dir/hw_params" 2>/dev/null | awk '{print $2}' | cut -d'(' -f1)
