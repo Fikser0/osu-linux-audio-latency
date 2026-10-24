@@ -84,10 +84,28 @@ rt_boost &
 RT_PID=$!
 
 # 5. Launch osu!lazer
-# Frame math: S32_LE (4 bytes) * 2 channels = 8 bytes/frame.
+# - OSU_TEMP_TESTING_BASS_CONFIG_DEV_PERIOD=-32: Sets BASS internal device period to 32 samples
+#   and device buffer to 64 samples (2x period), working for both PipeWire and Raw ALSA devices.
+# - Frame math: S32_LE (4 bytes) * 2 channels = 8 bytes/frame.
 # - alsa.period-bytes=256 -> exactly 32 frames (0.725ms), matching PipeWire quantum 32 1:1.
 #   (Avoids pipewire-alsa's internal min-avail=58 floor when period-bytes is too small).
 # - alsa.buffer-bytes=512 -> 64 frames (1.45ms) total ring buffer (~0.6ms actual appl-hw delta).
-PIPEWIRE_LATENCY="32/44100" \
-PIPEWIRE_ALSA='{ alsa.format=S32_LE alsa.channels=2 alsa.buffer-bytes=512 alsa.period-bytes=256 }' \
-/usr/bin/osu-lazer "$@"
+export OSU_TEMP_TESTING_BASS_CONFIG_DEV_PERIOD="${OSU_TEMP_TESTING_BASS_CONFIG_DEV_PERIOD:--32}"
+export PIPEWIRE_LATENCY="${PIPEWIRE_LATENCY:-32/44100}"
+export PIPEWIRE_ALSA="${PIPEWIRE_ALSA:-{ alsa.format=S32_LE alsa.channels=2 alsa.buffer-bytes=512 alsa.period-bytes=256 }}"
+
+if [ -n "$OSU_BIN" ]; then
+    "$OSU_BIN" "$@"
+elif command -v osu-lazer >/dev/null 2>&1; then
+    osu-lazer "$@"
+elif [ -x "$HOME/.local/bin/osu.AppImage" ]; then
+    "$HOME/.local/bin/osu.AppImage" "$@"
+elif command -v flatpak >/dev/null 2>&1 && flatpak info sh.ppy.osu >/dev/null 2>&1; then
+    flatpak run --env=OSU_TEMP_TESTING_BASS_CONFIG_DEV_PERIOD="$OSU_TEMP_TESTING_BASS_CONFIG_DEV_PERIOD" \
+                --env=PIPEWIRE_LATENCY="$PIPEWIRE_LATENCY" \
+                --env=PIPEWIRE_ALSA="$PIPEWIRE_ALSA" \
+                sh.ppy.osu "$@"
+else
+    echo "Error: osu!lazer binary not found. Set OSU_BIN=/path/to/osu.AppImage" >&2
+    exit 1
+fi

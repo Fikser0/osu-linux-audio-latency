@@ -25,7 +25,7 @@ When you click a circle and expect to hear a hitsound, the sound must traverse m
 
 | Stage | Mechanism | Delay at 44.1kHz | Configurable? |
 |---|---|---|---|
-| **1. Game & BASS Queue** | Sample decoding & `pipewire-alsa` ring buffer | **~0.7ms – 1.45ms** (32 period / 64 buffer) | Yes (`alsa.buffer-bytes=512 alsa.period-bytes=256`) |
+| **1. Game & BASS Queue** | Sample decoding, BASS device buffer & `pipewire-alsa` ring | **~0.7ms – 1.45ms** (32 period / 64 buffer) | Yes (`OSU_TEMP_TESTING_BASS_CONFIG_DEV_PERIOD=-32`, `alsa.buffer-bytes=512`, `alsa.period-bytes=256`) |
 | **2. PipeWire Graph** | Quantum DSP processing slice | **0.725ms** (Quantum 32) | Yes (`clock.force-quantum 32` & `PIPEWIRE_LATENCY="32/44100"`) |
 | **3. ALSA Ring Buffer (`appl - hw`)** | Hardware driver ring buffer fill | **~0.61ms – 0.72ms** (27 – 32 samples) | Yes (`period-size = 32`, `headroom = 32`, `disable-batch = true`) |
 | **4. USB Isochronous URB FIFO** | xHCI USB Request Block transmission (`delay`) | **~4.4ms** (~194 USB FIFO samples) | Minimized by `disable-batch = true` & dedicated CPU xHCI |
