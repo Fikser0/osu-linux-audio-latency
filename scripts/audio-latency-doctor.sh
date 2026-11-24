@@ -31,10 +31,15 @@ fi
 # 2. PipeWire & WirePlumber Status
 echo -e "\n${BOLD}[2] Checking PipeWire Graph Status...${RESET}"
 if command -v pw-metadata >/dev/null 2>&1; then
-    rate=$(pw-metadata -n settings 2>/dev/null | grep 'clock.force-rate' | grep -oP "value:'\K[^']+")
-    fquant=$(pw-metadata -n settings 2>/dev/null | grep 'clock.force-quantum' | grep -oP "value:'\K[^']+")
-    quantum=$(pw-metadata -n settings 2>/dev/null | grep 'clock.quantum' | head -1 | grep -oP "value:'\K[^']+")
-    echo -e "  ${GREEN}✓ PipeWire settings active:${RESET} force-rate=${rate:-0 (auto)}, force-quantum=${fquant:-0 (auto)}, default-quantum=${quantum:-1024}"
+    meta=$(pw-metadata -n settings 2>/dev/null)
+    rate=$(echo "$meta" | grep "key:'clock.force-rate'" | grep -oP "value:'\K[^']+")
+    allowed=$(echo "$meta" | grep "key:'clock.allowed-rates'" | grep -oP "value:'\K[^']+")
+    fquant=$(echo "$meta" | grep "key:'clock.force-quantum'" | grep -oP "value:'\K[^']+")
+    quantum=$(echo "$meta" | grep "key:'clock.quantum'" | head -1 | grep -oP "value:'\K[^']+")
+    echo -e "  ${GREEN}✓ PipeWire settings active:${RESET} force-rate=${rate:-0 (auto)}, force-quantum=${fquant:-0 (auto)}, default-quantum=${quantum:-1024}, allowed-rates=${allowed:-unknown}"
+    if [ -n "$allowed" ] && ! echo "$allowed" | grep -q '44100'; then
+        echo -e "  ${YELLOW}⚠ 44100 Hz is not in clock.allowed-rates.${RESET} Install pipewire/10-rates.conf so force-rate 44100 works."
+    fi
 else
     echo -e "  ${RED}✗ pw-metadata not found.${RESET}"
 fi
@@ -86,8 +91,12 @@ for status_file in /proc/asound/card*/pcm*p/sub*/status; do
                 elif (( $(awk "BEGIN {print ($delay_ms <= 15.0)}") )); then
                     echo -e "  ${GREEN}✓ Hardware Delay:${RESET} ${delay} samples (~${delay_ms}ms) [LOW-LATENCY LOCKED]"
                 else
-                    echo -e "  ${YELLOW}⚠ Hardware Delay:${RESET} ${delay} samples (~${delay_ms}ms) [HIGH HARDWARE BUFFER BLOAT]"
-                    echo -e "    ${YELLOW}Hint: Apply wireplumber/51-osu-low-latency.conf (period-size=32, headroom=32, disable-batch=true).${RESET}"
+                    if [ "${fquant:-0}" -eq 0 ] 2>/dev/null; then
+                        echo -e "  ${YELLOW}ℹ Hardware Delay:${RESET} ${delay} samples (~${delay_ms}ms) [Expected while idle / osu! wrapper not active (force-quantum=0)]"
+                    else
+                        echo -e "  ${YELLOW}⚠ Hardware Delay:${RESET} ${delay} samples (~${delay_ms}ms) [HIGH HARDWARE BUFFER BLOAT]"
+                        echo -e "    ${YELLOW}Hint: Apply wireplumber/51-osu-low-latency.conf (period-size=32, headroom=32, disable-batch=true).${RESET}"
+                    fi
                 fi
             fi
         fi
